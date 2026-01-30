@@ -8,13 +8,14 @@ Le flux de données traverse les composants suivants :
 
 1.  **Source** : Fichier CSV (`customers.csv`) simulant une base de données source.
 2.  **Ingestion (Producer)** : Script Python (`kafka_producer.py`) qui publie les enregistrements en JSON dans **Kafka**.
-3.  **Traitement (Spark Engine)** : Job Spark Streaming (`spark_streaming_job.py`) qui :
+3.  **Traitement (Spark Engine)** : Job Spark Streaming (`spark_streaming_job_kafka_hdfs.py`) qui :
     * Lit le flux Kafka en continu (`readStream`).
     * Parse la structure JSON et nettoie les types de données.
     * Filtre les données : sépare les clients "USA" valides des données incomplètes ("Alerts").
 4.  **Stockage (HDFS)** :
     * `/user/maria_dev/customers_usa` : Données propres (Parquet/JSON).
     * `/user/maria_dev/customers_alerts` : Rejets et erreurs pour analyse.
+5.  **Stockage BD (SupaBase)** : Job Spark Streaming (`spark_streaming_job_db.py`) qui envoie les messages kafka dans une base de donnée **SupaBase**.
 
 ---
 
@@ -26,15 +27,16 @@ Voici l'organisation recommandée des fichiers pour ce projet :
 customer-streaming-pipeline/
 │
 ├── data/
-│   └── customers.csv             # Fichier source (Dataset)
+│   └── customers.csv                      # Fichier source (Dataset)
 │
-├── jars/                         # Dépendances Java pour Spark
+├── jars/                                  # Dépendances Java pour Spark
 │   ├── kafka-clients-1.1.1.jar
 │   └── spark-sql-kafka-0-10_2.11-2.3.2.jar
 │
 ├── src/
-│   ├── kafka_producer.py         # Le Producer Kafka (Python)
-│   └── spark_streaming_job.py    # Le Job Spark Streaming (Pyspark)
+│   ├── kafka_producer.py                  # Le Producer Kafka (Python)
+│   ├── spark_streaming_job_kafka_hdfs.py  # Le Job Spark Streaming (Pyspark) KAFKA HDFS
+│   └── spark_streaming_job_db.py          # Le Job Spark Streaming (Pyspark) KAFKA SUPABASE
 │
 ├── scripts/
 │   └── reset_environment.sh      # Script de nettoyage (HDFS + Checkpoints)
@@ -78,6 +80,7 @@ pip install kafka-python==2.0.2
 * **Spark** : Version 2.3+ (Compatible Structured Streaming).
 * **Kafka** : Topic configuré.
 * **Python** : 2.7 (dans notre sandbox).
+* **Postgres** : Supabase directement.
 
 ---
 
@@ -97,20 +100,30 @@ Création du topic qui recevra les données brutes :
 
 Et des deux autres topic (customers-raw ainsi que customers-alerts) de la même manière.
 
-### 2. Démarrage du Producer
-Ce script va lire le fichier CSV depuis S3 avec boto3 et envoyer les messages un par un dans Kafka (le topic customers-raw).
-
-```bash
-python src/kafka_producer.py
-```
-
-### 3. Exécution du Job Spark
+### 2. Exécution du Job Spark
+#### 1. Dans le cas de KAFKA ou HDFS
 Soumettez le job à YARN ou en local via `spark-submit`. Notez l'utilisation des `.jars` pour le connecteur Kafka.
 
 ```bash
 spark-submit \\
   --jars jars/spark-sql-kafka-0-10_2.11-2.3.2.jar,jars/kafka-clients-1.1.1.jar \\
-  spark_streaming_job.py
+  spark_streaming_job_kafka_hdfs.py
+```
+
+#### 2. Dans le cas d'une insertion en base de données
+Soumettez le job à YARN ou en local via `spark-submit`. Notez l'utilisation des `packages` pour spark.
+
+```bash
+spark-submit \\
+  --packages org.apache.spark:spark-streaming-kafka-0-8_2.11:2.3.0 \\
+  spark_streaming_job_db.py
+```
+
+### 3. Démarrage du Producer
+Ce script va lire le fichier CSV depuis S3 avec boto3 et envoyer les messages un par un dans Kafka (le topic customers-raw).
+
+```bash
+python src/kafka_producer.py
 ```
 
 ---
