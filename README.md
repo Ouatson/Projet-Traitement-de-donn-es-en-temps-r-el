@@ -1,6 +1,6 @@
 # 🚀 Pipeline Data Streaming : Ingestion Clients (Kafka & Spark)
 
-Ce projet implémente un pipeline de données **Temps Réel** (Real-Time) robuste sur un environnement Big Data (HDP Sandbox). Il simule l'arrivée continue de nouveaux clients, les ingère via Kafka, les traite avec Spark Structured Streaming, et les stocke sur HDFS selon leur validité.
+Ce projet implémente un pipeline de données **Temps Réel** (Real-Time) robuste sur un environnement Big Data (HDP Sandbox). Il simule l'arrivée continue de nouveaux clients, les ingère via Kafka, les traite avec Spark Structured Streaming, et les stocke sur HDFS selon leur validité. Avec une partie de liaison à une base de données en ligne, SupaBase, dont le lien est le suivant : https://supabase.com/dashboard/org/tvugxmxqzkwjuphokzai.
 
 ## 📋 Architecture du Pipeline
 
