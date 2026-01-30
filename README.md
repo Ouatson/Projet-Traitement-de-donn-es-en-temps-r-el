@@ -39,8 +39,35 @@ customer-streaming-pipeline/
 ├── scripts/
 │   └── reset_environment.sh      # Script de nettoyage (HDFS + Checkpoints)
 │
-├── requirements.txt              # Dépendances (ex: kafka-python)
 └── README.md                     # Documentation du projet
+```
+
+---
+
+## 📦 Gestion des Dépendances Python (PIP)
+
+Sur la Sandbox HDP, il est nécessaire d'installer manuellement le gestionnaire de paquets `pip` pour pouvoir installer les librairies Python comme `kafka-python`.
+
+### 1. Installation manuelle de PIP
+Nous utilisons le script officiel d'installation (bootstrap) :
+
+```bash
+# 1. Télécharger le script d'installation
+curl "https://bootstrap.pypa.io/pip/2.7/get-pip.py" -o "get-pip.py"
+
+# 2. Exécuter le script avec Python (root ou sudo peut être requis selon les droits)
+python get-pip.py
+
+# 3. Vérifier l'installation
+pip --version
+```
+*(Note : Si vous utilisez Python 3, remplacez `python` par `python3`)*
+
+### 2. Installation des librairies du projet
+Une fois `pip` installé, installez le connecteur Kafka nécessaire au script `kafka_producer.py`.
+
+```bash
+pip install kafka-python==2.0.2
 ```
 
 ---
@@ -74,17 +101,16 @@ Et des deux autres topic (customers-raw ainsi que customers-alerts) de la même 
 Ce script va lire le fichier CSV depuis S3 avec boto3 et envoyer les messages un par un dans Kafka (le topic customers-raw).
 
 ```bash
-python kafka_producer.py
+python src/kafka_producer.py
 ```
-*Laissez ce terminal ouvert ou lancez-le en arrière-plan.*
 
 ### 3. Exécution du Job Spark
 Soumettez le job à YARN ou en local via `spark-submit`. Notez l'utilisation des `.jars` pour le connecteur Kafka.
 
 ```bash
 spark-submit \\
-  --jars spark-sql-kafka-0-10_2.11-2.3.2.jar,kafka-clients-1.1.1.jar \\
-  python_spark_job.py
+  --jars jars/spark-sql-kafka-0-10_2.11-2.3.2.jar,jars/kafka-clients-1.1.1.jar \\
+  spark_streaming_job.py
 ```
 
 ---
@@ -95,6 +121,7 @@ Ce projet a été configuré pour gérer les erreurs courantes :
 
 ### 1. Gestion des Pertes de Données (Data Loss)
 Kafka peut supprimer des anciens messages (rétention) avant que Spark ne les lise. Pour éviter que le job ne crash avec une erreur `OffsetOutOfRangeException`, nous utilisons :
+
 ```python
 .option("failOnDataLoss", "false")
 ```
@@ -109,6 +136,13 @@ Cela garantit la sémantique **"Exactly-Once"** (aucun doublon, aucune perte) en
 ## 🧹 Procédure de Reset (Dépannage)
 
 Si vous rencontrez des erreurs de type `Metadata Log` ou `IllegalStateException` (conflit entre le checkpoint et HDFS), ou si vous souhaitez relancer le traitement depuis le début (offset 0), **suivez impérativement cette procédure de nettoyage** :
+
+Pour ne pas se compliquer la tâche juste lancer le script : `reset_environnements.sh`
+```bash
+sh scripts/reset_environnements.sh
+```
+
+- Voici le detail des actions pour son exécution correcte
 
 **1. Arrêter le Producer et le Job Spark (Ctrl+C).**
 
